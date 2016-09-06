@@ -1,0 +1,133 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+#     TST Automatizado
+#     Copyright (C) 2016  Felipe Marinho
+
+#     This program is free software: you can redistribute it and/or modify
+#     it under the terms of the GNU General Public License as published by
+#     the Free Software Foundation, either version 3 of the License, or
+#     any later version.
+
+#     This program is distributed in the hope that it will be useful,
+#     but WITHOUT ANY WARRANTY; without even the implied warranty of
+#     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#     GNU General Public License for more details.
+
+#     You should have received a copy of the GNU General Public License
+#     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+from unicodedata import normalize
+import subprocess
+import os
+import json
+import sys
+
+def remover_acentos(txt, codif='utf-8'):
+	return normalize('NFKD', txt.decode(codif)).encode('ASCII','ignore')
+
+def processar_arquivo(file):
+	data = file.readline()
+	return json.loads(data.decode())
+
+def dropbox():
+	if os.system("type dropbox > /dev/null") == 0:
+		return 'Dropbox'
+	else:
+		key = raw_input("Deseja que o TST Auto sicronize automaticamente seus exercícios no Dropbox? (Y/n) ")
+		if key == "Y" or key == "y":
+			print "Descarregando o cliente dropbox-cli..."
+			os.system("wget -O %s/.tst/bin/dropbox 'https://www.dropbox.com/download?dl=packages/dropbox.py'" % os.environ["HOME"])
+			os.system("chmod +x %s/.tst/bin/dropbox" % os.environ["HOME"])
+			try:
+				os.system("dropbox start -i")
+				subprocess.Popen(["dropbox", "start"])
+			except OSError:
+				os.system("rm %s/.tst/bin/dropbox" % os.environ["HOME"])
+				print "Arquivo corrompido."
+			print raw_input("Por favor faça login em seu Dropbox e após isso aperte qualquer tecla.")
+			#sys.exit()
+			dbox = 'Dropbox'
+			# A ser implementado.
+		else:
+			dbox = ''
+	return dbox
+
+def configurar():
+	try: # Procura por arquivo de configuração. Se configuração não existir, cria uma nova.
+		with open('%s/tst_auto.json' % os.environ["HOME"], 'r') as file: data = processar_arquivo(file)
+	except IOError:
+		print "\033[1m" + "-------\nBem Vindo ao TST Automatizado.\nEscrito por Felipe Marinho (C) sob os termos da licença GPLv3.\n-------" + "\033[0;0m"
+		print "tst_auto.json não encontrado, criando nova configuração.\n"
+		file = open('%s/tst_auto.json' % os.environ["HOME"],'w')
+		nome = raw_input("Digite seu nome para o cabeçalho: ")
+		matricula = raw_input("Digite os nº da sua matrícula: ")
+		email = raw_input("Digite os seu email institucional: ")
+		data = json.dumps({"nome": "%s" % nome,"matricula": "%s" % matricula, "email": "%s" % email, "lastfile": None,"lastdir": None})
+		file.write(data)
+		file.close()
+		print "\nEsta tela não será mais apresentada novamente.\nCaso queira mudar as configurações edite o tst_auto.json ou apague-o.\n"
+		with open('%s/tst_auto.json' % os.environ["HOME"], 'r') as file: data = processar_arquivo(file)
+		#dbox = dropbox()
+	return data
+
+def help():
+	print 'Uso: tst_auto.py [.] [..] [-h]'
+	print ' -h, --help\tExibe esta ajuda.'
+	print ' .\t\tExecuta os testes locais no último diretório trabalhado.'
+	print ' ..\t\tExecuta o "commit" no último diretório trabalhado.'
+
+def main():
+	### Configurações Gerais
+	data = configurar()
+	dbox = dropbox()
+
+	## Editor de Texto padrão: Sublime Text 2
+	# Exemplos de opções: "subl"; "gedit"; "geany"; "vim"; "nano"
+	editor = "gedit"
+
+	### Entrada
+	exercicio = raw_input("Digite o nome do exercício: ")
+	unidade = raw_input("Unidade: ")
+	checkout = raw_input("Cole aqui o checkout: ")
+
+	### Processamento
+	diretorio = "%s/%s/Exercícios/%s/%s" % (os.environ["HOME"],dbox,unidade,exercicio)
+	arquivo = "%s.py" % (str.lower(remover_acentos(exercicio))).replace(" ","-")
+	## Gravação do último arquivo
+	data["lastfile"] = arquivo
+	data["lastdir"] = diretorio
+	file = open('%s/tst_auto.json' % os.environ["HOME"],'w')
+	file.write(json.dumps(data))
+	## Formatação do cabeçalho
+	cabecalho = "# coding: utf-8\n# %s\n# %s (C) | %s | <%s>" % (exercicio, data["nome"].encode("utf8"), data["matricula"].encode("utf8"), data["email"].encode("utf8"))
+
+	### Saída
+	os.makedirs(diretorio)
+	os.chdir(diretorio)
+	os.system("tst checkout %s" % checkout)
+	open(arquivo,"w").write(cabecalho)
+	print arquivo + " criado com sucesso."
+	os.system('%s "%s" 2>&1&> /dev/null' % (editor,arquivo))
+	sys.exit()
+
+for i in range(1,len(sys.argv)):
+	if sys.argv[i] == ".":
+		data = configurar()
+		os.chdir(data["lastdir"])
+		os.system("tst test %s" % data["lastfile"])
+	elif sys.argv[i] == "..":
+		data = configurar()
+		os.chdir(data["lastdir"])
+		os.system("tst commit %s" % data["lastfile"])
+	elif sys.argv[i] == "./":
+		data = configurar()
+		os.chdir(data["lastdir"])
+		os.system("python %s" % data["lastfile"])
+	elif sys.argv[i] == "-h" or sys.argv[i] == "--help":
+		help()
+	else:
+		print 'Argumento inválido, tente "-h" ou "--help".'
+
+if __name__ == "__main__" and len(sys.argv) == 1:
+		main()
