@@ -1,6 +1,6 @@
 #!/bin/bash
 
 echo "Baixando TST Auto."
-wget -O $HOME/.tst/bin/Tst-auto https://www.dropbox.com/s/4ov6hyvtxtqgi3p/Tst-auto?dl=0
+wget -O $HOME/.tst/bin/Tst-auto https://raw.githubusercontent.com/felipemarinho97/TST-Auto/master/Tst-auto
 chmod +x $HOME/.tst/bin/Tst-auto
 echo "TST Auto instalado com sucesso.. digite "Tst-auto --help" no seu terminal para uso do comando"
