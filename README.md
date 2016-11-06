@@ -19,7 +19,7 @@ So, to install tst run the following command:
     
 And then run the following command to finally install Tst-auto.
     
-    $ bash -c "$(curl -q -sSL http://bit.ly/tst-auto-install)"
+    $ bash -c "$(curl -q -sSL http://bit.ly/TST-Auto-install)"
     
 ## License
 
